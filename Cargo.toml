@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["macros", "typst-wasm-protocol"]
+default-members = ["typst-wasm-protocol"]
+
+[workspace.dependencies]
+
+typst-wasm-macros = { path = "./macros" }
+typst-wasm-protocol = { path = "./typst-wasm-protocol" }
+
+proc-macro2 = "1.0.36"
+quote = "1.0.15"
+venial = "0.6.1"

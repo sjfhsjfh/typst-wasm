@@ -1,0 +1,8 @@
+# Rust
+**/target/
+
+# Mac OS
+.DS_Store
+
+# Visual Studio Code
+.vscode/

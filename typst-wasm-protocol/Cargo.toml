@@ -1,0 +1,7 @@
+[package]
+name = "typst-wasm-protocol"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+typst-wasm-macros = { workspace = true }
