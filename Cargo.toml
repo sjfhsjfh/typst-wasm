@@ -5,9 +5,9 @@ default-members = ["typst-wasm-protocol"]
 
 [workspace.package]
 version = "0.0.1"
+publish = true
 
 [workspace.dependencies]
-
 typst-wasm-macros = { path = "./typst-wasm-macros", version = "0.0.1" }
 typst-wasm-protocol = { path = "./typst-wasm-protocol", version = "0.0.1" }
 
