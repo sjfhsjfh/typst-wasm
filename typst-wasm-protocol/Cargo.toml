@@ -2,6 +2,9 @@
 name = "typst-wasm-protocol"
 edition = "2021"
 version.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 typst-wasm-macros = { workspace = true }

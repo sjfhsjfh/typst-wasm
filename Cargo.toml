@@ -6,6 +6,9 @@ default-members = ["typst-wasm-protocol"]
 [workspace.package]
 version = "0.0.1"
 publish = true
+repository = "https://github.com/sjfhsjfh/typst-wasm"
+license = "MIT"
+description = "Typst WASM tools"
 
 [workspace.dependencies]
 typst-wasm-macros = { path = "./typst-wasm-macros", version = "0.0.1" }
