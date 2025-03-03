@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["macros", "typst-wasm-protocol"]
+members = ["typst-wasm-macros", "typst-wasm-protocol"]
 default-members = ["typst-wasm-protocol"]
 
 [workspace.package]
