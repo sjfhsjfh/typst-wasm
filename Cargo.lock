@@ -21,11 +21,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "syn"
+version = "2.0.99"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e02e925281e18ffd9d640e234264753c43edc62d64b2d4cf898f1bc5e75f3fc2"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
+
+[[package]]
 name = "typst-wasm-macros"
 version = "0.0.1"
 dependencies = [
  "proc-macro2",
  "quote",
+ "syn",
  "venial",
 ]
 

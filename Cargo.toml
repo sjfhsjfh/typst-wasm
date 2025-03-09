@@ -16,4 +16,5 @@ typst-wasm-protocol = { path = "./typst-wasm-protocol", version = "0.0.1" }
 
 proc-macro2 = "1.0.36"
 quote = "1.0.15"
+syn = "2.0.99"
 venial = "0.6.1"
