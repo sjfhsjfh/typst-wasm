@@ -4,15 +4,15 @@ members = ["typst-wasm-macros", "typst-wasm-protocol"]
 default-members = ["typst-wasm-protocol"]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 publish = true
 repository = "https://github.com/sjfhsjfh/typst-wasm"
 license = "MIT"
 description = "Typst WASM tools"
 
 [workspace.dependencies]
-typst-wasm-macros = { path = "./typst-wasm-macros", version = "0.0.1" }
-typst-wasm-protocol = { path = "./typst-wasm-protocol", version = "0.0.1" }
+typst-wasm-macros = { path = "./typst-wasm-macros", version = "0.0.2" }
+typst-wasm-protocol = { path = "./typst-wasm-protocol", version = "0.0.2" }
 
 proc-macro2 = "1.0.36"
 quote = "1.0.15"

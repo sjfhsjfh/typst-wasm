@@ -33,7 +33,7 @@ dependencies = [
 
 [[package]]
 name = "typst-wasm-macros"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -43,7 +43,7 @@ dependencies = [
 
 [[package]]
 name = "typst-wasm-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "typst-wasm-macros",
 ]
