@@ -4,6 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Downloads](https://img.shields.io/crates/d/typst-wasm-protocol.svg)](https://crates.io/crates/typst-wasm-protocol)
 
+> [!IMPORTANT]
+> This project is WIP and in early development and may not be fully functional.
+
 A toolkit for [Typst Plugins](https://typst.app/docs/reference/foundations/plugin/) that provides a macro and protocol for exporting functions to WebAssembly.
 
 ## Installation
