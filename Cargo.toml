@@ -4,7 +4,7 @@ members = ["typst-wasm-macros", "typst-wasm-protocol"]
 default-members = ["typst-wasm-protocol"]
 
 [workspace.package]
-version = "0.0.2"
+version = "0.1.0"
 publish = true
 repository = "https://github.com/sjfhsjfh/typst-wasm"
 license = "MIT"
@@ -16,5 +16,5 @@ rust-version = "1.82"
 proc-macro2 = "1.0.36"
 quote = "1.0.15"
 syn = "2.0.99"
-typst-wasm-macros = { path = "./typst-wasm-macros", version = "0.0.2" }
-typst-wasm-protocol = { path = "./typst-wasm-protocol", version = "0.0.2" }
+typst-wasm-macros = { path = "./typst-wasm-macros", version = "0.1.0" }
+typst-wasm-protocol = { path = "./typst-wasm-protocol", version = "0.1.0" }

@@ -12,7 +12,7 @@ A smol toolkit for writing [Typst WebAssembly plugins](https://typst.app/docs/re
 
 ```toml
 [dependencies]
-typst-wasm-protocol = "0.0.2"
+typst-wasm-protocol = "0.1.0"
 serde = { version = "1", features = ["derive"] } # if you're using Json/Cbor
 ```
 
