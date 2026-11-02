@@ -7,6 +7,8 @@ pub use arg::{read_args, read_args_unchecked, ArgsReader, FromArg};
 pub use error::{PluginError, Result};
 pub use response::{send_response, IntoResponse, Response};
 
+#[cfg(feature = "cbor")]
+pub use formats::Cbor;
 #[cfg(feature = "json")]
 pub use formats::Json;
 
