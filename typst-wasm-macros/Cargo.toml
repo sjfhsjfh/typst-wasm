@@ -2,9 +2,13 @@
 name = "typst-wasm-macros"
 edition = "2021"
 version.workspace = true
-description.workspace = true
+description = "Attribute macro for exporting Rust functions as Typst WebAssembly plugin entry points."
 license.workspace = true
 repository.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+keywords = ["typst", "wasm", "webassembly", "plugin"]
+categories = ["wasm", "development-tools"]
 
 [lib]
 proc-macro = true

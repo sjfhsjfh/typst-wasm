@@ -9,6 +9,7 @@ publish = true
 repository = "https://github.com/sjfhsjfh/typst-wasm"
 license = "MIT"
 description = "Typst WASM tools"
+rust-version = "1.82"
 
 [workspace.dependencies]
 

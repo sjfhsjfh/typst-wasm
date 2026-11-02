@@ -2,78 +2,98 @@
 
 [![Crates.io](https://img.shields.io/crates/v/typst-wasm-protocol.svg)](https://crates.io/crates/typst-wasm-protocol)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Downloads](https://img.shields.io/crates/d/typst-wasm-protocol.svg)](https://crates.io/crates/typst-wasm-protocol)
 
-> [!IMPORTANT]
-> This project is WIP and in early development and may not be fully functional.
+A smol toolkit for writing [Typst WebAssembly plugins](https://typst.app/docs/reference/foundations/plugin/) in Rust.
 
-A toolkit for [Typst Plugins](https://typst.app/docs/reference/foundations/plugin/) that provides a macro and protocol for exporting functions to WebAssembly.
+- [`typst-wasm-protocol`](typst-wasm-protocol): `#[wasm_export]`, argument extractors, response conversion, JSON/CBOR helpers
+- [`typst-wasm-macros`](typst-wasm-macros): the proc macro (re-exported by the protocol crate)
 
 ## Installation
-
-Add the following dependency to your Rust project:
 
 ```toml
 [dependencies]
 typst-wasm-protocol = "0.0.2"
+serde = { version = "1", features = ["derive"] } # if you're using Json/Cbor
 ```
 
-## Usage
+MSRV: 1.82.
 
-### Exporting Functions to WASM
-
-Use the `wasm_export` macro to mark functions for export:
+## Quick start
 
 ```rust
-use typst_wasm_protocol::wasm_export;
+use serde::{Deserialize, Serialize};
+use typst_wasm_protocol::{wasm_export, Cbor, PluginError};
 
-#[wasm_export]
-pub fn hello_world(name: &[u8]) -> Vec<u8> {
-    format!("Hello, {}!", String::from_utf8_lossy(name)).into_bytes()
+#[derive(Deserialize, Serialize)]
+struct Point {
+    x: i32,
+    y: i32,
 }
 
-// Custom export name
+#[wasm_export]
+pub fn double(Cbor(point): Cbor<Point>) -> Result<Cbor<Point>, PluginError> {
+    Ok(Cbor(Point {
+        x: point.x * 2,
+        y: point.y * 2,
+    }))
+}
+```
+
+```typ
+#let p = plugin("plugin.wasm")
+#let input = (x: 2, y: 3)
+#cbor(p.double(bytes(cbor.encode(input))))
+```
+
+You may also use `&[u8]` or `&str` to handle raw input directly.
+
+## Argument patterns
+
+The macro keeps the original function intact, so extractor-style parameters work:
+
+```rust
+#[wasm_export]
+pub fn transform(Json(point): Json<Point>) -> Result<Json<Point>, PluginError> {
+    // ...
+}
+```
+
+## Errors
+
+Return `Result<T, PluginError>`; the message is sent to Typst as the plugin error:
+
+```rust
+Err(PluginError::new("invalid input").context("parse"))
+```
+
+Typst reports:
+
+```text
+plugin errored with: parse: invalid input
+```
+
+## Length checking
+
+By default the generated wrapper trusts the argument lengths supplied by the host. If the module can be called by other WebAssembly hosts, enable checking:
+
+```rust
+#[wasm_export(check_args = true)]
+pub fn checked(input: &[u8]) -> Vec<u8> {
+    input.to_vec()
+}
+```
+
+With checking enabled, overflow, allocation failure, and out-of-bounds reads become `PluginError` responses instead of traps.
+
+## Export renaming
+
+```rust
 #[wasm_export(export_rename = "greet")]
 pub fn say_hello(name: &[u8]) -> Vec<u8> {
     format!("Hello, {}!", String::from_utf8_lossy(name)).into_bytes()
 }
 ```
 
-### Handling Results and Errors
-
-The protocol provides a `PluginResult` trait that automatically handles data conversion for various return types:
-
-```rust
-use typst_wasm_protocol::PluginResult;
-
-#[wasm_export]
-pub fn process_data(input: &[u8]) -> Result<Vec<u8>, String> {
-    // Process data, return Result
-    // The PluginResult trait automatically handles the conversion
-    // No manual data structure transformation needed
-    Ok(input.to_vec())
-}
-
-// Works with different Result types without manual conversions
-#[wasm_export]
-pub fn validate_text(text: &[u8]) -> Result<String, String> {
-    let text_str = std::str::from_utf8(text).map_err(|e| e.to_string())?;
-    if text_str.len() > 10 {
-        Ok("Text is valid".to_string())
-    } else {
-        Err("Text is too short".to_string())
-    }
-}
-```
-
 ## Examples
 
-See [typst-wasm-protocol/examples](typst-wasm-protocol/examples) for a basic example of using the `wasm_export` macro and handling results. Also [typst-relescope](https://github.com/sjfhsjfh/typst-relescope) as a real-world example of a Typst plugin using this protocol.
-
-## Building WASM Modules
-
-Compile to WebAssembly using:
-
-```bash
-cargo build --target wasm32-unknown-unknown --release
-```
+See [`typst-wasm-protocol/examples`](typst-wasm-protocol/examples) for a runnable feature showcase covering raw bytes, `Json<T>`, `Cbor<T>`, error handling, `export_rename`, and `check_args`.

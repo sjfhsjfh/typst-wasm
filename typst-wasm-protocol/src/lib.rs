@@ -1,3 +1,5 @@
+//! Protocol and ergonomic wrappers for Typst WebAssembly plugins.
+
 mod arg;
 mod error;
 mod formats;

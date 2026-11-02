@@ -2,9 +2,17 @@
 name = "typst-wasm-protocol"
 edition = "2021"
 version.workspace = true
-description.workspace = true
+description = "Protocol and ergonomic argument/response wrappers for Typst WebAssembly plugins."
 license.workspace = true
 repository.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+keywords = ["typst", "wasm", "webassembly", "plugin", "serde"]
+categories = ["wasm", "development-tools", "encoding"]
+exclude = ["examples/**"]
+
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 default = ["json", "cbor"]
