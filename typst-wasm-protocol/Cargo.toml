@@ -6,5 +6,17 @@ description.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["json"]
+json = ["dep:serde", "dep:serde_json", "dep:serde_path_to_error"]
+cbor = ["dep:serde", "dep:ciborium"]
+postcard = ["dep:serde", "dep:postcard"]
+formats = ["json", "cbor", "postcard"]
+
 [dependencies]
+ciborium = { version = "0.2", optional = true }
+postcard = { version = "1", optional = true, features = ["alloc"] }
+serde = { version = "1", optional = true }
+serde_json = { version = "1", optional = true }
+serde_path_to_error = { version = "0.1", optional = true }
 typst-wasm-macros = { workspace = true }

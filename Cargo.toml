@@ -11,10 +11,9 @@ license = "MIT"
 description = "Typst WASM tools"
 
 [workspace.dependencies]
-typst-wasm-macros = { path = "./typst-wasm-macros", version = "0.0.2" }
-typst-wasm-protocol = { path = "./typst-wasm-protocol", version = "0.0.2" }
 
 proc-macro2 = "1.0.36"
 quote = "1.0.15"
 syn = "2.0.99"
-venial = "0.6.1"
+typst-wasm-macros = { path = "./typst-wasm-macros", version = "0.0.2" }
+typst-wasm-protocol = { path = "./typst-wasm-protocol", version = "0.0.2" }

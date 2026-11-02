@@ -1,139 +1,185 @@
 use proc_macro::TokenStream;
-use quote::{format_ident, quote, ToTokens};
-use syn::{parse::Parser, Expr};
-use venial::*;
+use quote::{format_ident, quote};
+use syn::parse::Parser;
+use syn::punctuated::Punctuated;
+use syn::{Expr, ExprLit, FnArg, ItemFn, Lit, LitStr, MetaNameValue, Token, Type};
 
-fn construct_export(
-    name: &proc_macro2::Ident,
-    vis_marker: Option<VisMarker>,
-    params: Vec<FnTypedParam>,
-    export_rename: &Option<Expr>,
-) -> proc_macro2::TokenStream {
-    fn param_idx(name: &proc_macro2::Ident) -> proc_macro2::Ident {
-        format_ident!("__{}_idx", name)
+#[derive(Default)]
+struct MacroOptions {
+    export_rename: Option<LitStr>,
+    check_args: Option<bool>,
+}
+
+fn parse_options(args: TokenStream) -> syn::Result<MacroOptions> {
+    let mut options = MacroOptions::default();
+    let args = Punctuated::<MetaNameValue, Token![,]>::parse_terminated.parse(args)?;
+    for arg in args {
+        if arg.path.is_ident("export_rename") {
+            match arg.value {
+                Expr::Lit(ExprLit {
+                    lit: Lit::Str(lit), ..
+                }) => options.export_rename = Some(lit),
+                value => {
+                    return Err(syn::Error::new_spanned(
+                        value,
+                        "`export_rename` expects a string literal",
+                    ));
+                }
+            }
+        } else if arg.path.is_ident("check_args") {
+            match arg.value {
+                Expr::Lit(ExprLit {
+                    lit: Lit::Bool(lit),
+                    ..
+                }) => options.check_args = Some(lit.value),
+                value => {
+                    return Err(syn::Error::new_spanned(
+                        value,
+                        "`check_args` expects a boolean literal",
+                    ));
+                }
+            }
+        } else {
+            return Err(syn::Error::new_spanned(
+                arg.path,
+                "unknown argument; expected `export_rename = \"...\"` or `check_args = true/false`",
+            ));
+        }
+    }
+    Ok(options)
+}
+
+fn expand(func: ItemFn, options: MacroOptions) -> syn::Result<proc_macro2::TokenStream> {
+    let mut types = Vec::<Type>::new();
+    for arg in &func.sig.inputs {
+        match arg {
+            FnArg::Receiver(receiver) => {
+                return Err(syn::Error::new_spanned(
+                    receiver,
+                    "`self` is not supported by the wasm plugin protocol",
+                ));
+            }
+            FnArg::Typed(pat_type) => {
+                if matches!(*pat_type.ty, Type::ImplTrait(_)) {
+                    return Err(syn::Error::new_spanned(
+                        &pat_type.ty,
+                        "`impl Trait` parameters are not supported; name a concrete type instead",
+                    ));
+                }
+                types.push((*pat_type.ty).clone());
+            }
+        }
     }
 
+    let name = &func.sig.ident;
+    let vis = &func.vis;
+    let export_name = options
+        .export_rename
+        .unwrap_or_else(|| LitStr::new(&name.to_string(), name.span()));
     let inner_name = format_ident!("__wasm_minimal_protocol_internal_function_{}", name);
-    // let export_name = proc_macro2::Literal::string(&name.to_string());
-    let export_name = export_rename
-        .as_ref()
-        .unwrap_or(&Expr::Lit(syn::ExprLit {
-            attrs: vec![],
-            lit: syn::Lit::Str(syn::LitStr::new(&name.to_string(), name.span())),
-        }))
-        .to_token_stream();
-    let p_idx = params
-        .iter()
-        .map(|p| &p.name)
-        .map(param_idx)
-        .collect::<Vec<_>>();
-    let param_names = params.iter().map(|p| p.name.clone()).collect::<Vec<_>>();
 
-    let get_unsplit_params = if params.len() == 0 {
-        quote!()
+    let lens = (0..types.len())
+        .map(|i| format_ident!("__wasm_arg_len_{}", i))
+        .collect::<Vec<_>>();
+    let args = (0..types.len())
+        .map(|i| format_ident!("__wasm_arg_{}", i))
+        .collect::<Vec<_>>();
+
+    let body = if types.is_empty() {
+        quote! {
+            let __wasm_result = #name();
+            typst_wasm_protocol::send_response(__wasm_result)
+        }
     } else {
-        quote!(
-            let __total_len = #(#p_idx + )* 0;
-            let mut __unsplit_params = vec![0u8; __total_len];
-            typst_wasm_protocol::write_args_to_buffer(__unsplit_params.as_mut_ptr());
-        )
+        if options.check_args.unwrap_or(false) {
+            quote! {
+                let __wasm_args = match typst_wasm_protocol::read_args(&[#(#lens),*]) {
+                    Ok(args) => args,
+                    Err(error) => return typst_wasm_protocol::send_response(error),
+                };
+                let mut __wasm_reader = typst_wasm_protocol::ArgsReader::new(&__wasm_args);
+
+                #(
+                    let #args: #types = match __wasm_reader.read(#lens) {
+                        Ok(value) => value,
+                        Err(error) => return typst_wasm_protocol::send_response(error),
+                    };
+                )*
+
+                let __wasm_result = #name(#(#args),*);
+                typst_wasm_protocol::send_response(__wasm_result)
+            }
+        } else {
+            quote! {
+                let __wasm_args = typst_wasm_protocol::read_args_unchecked(&[#(#lens),*]);
+                let mut __wasm_reader = typst_wasm_protocol::ArgsReader::new(&__wasm_args);
+
+                #(
+                    let #args: #types = match __wasm_reader.read_unchecked(#lens) {
+                        Ok(value) => value,
+                        Err(error) => return typst_wasm_protocol::send_response(error),
+                    };
+                )*
+
+                let __wasm_result = #name(#(#args),*);
+                typst_wasm_protocol::send_response(__wasm_result)
+            }
+        }
     };
 
-    let mut set_args = quote!(
-        let mut start: usize = 0;
-    );
-    for param in params.iter() {
-        let name = &param.name;
-        let ty = &param.ty;
-        let idx = param_idx(name);
-        set_args.extend(quote!(
-            let #name: #ty = (&__unsplit_params[start..start + #idx]).into();
-            start += #idx;
-        ));
-    }
+    Ok(quote! {
+        #func
 
-    quote!(
-        #[export_name = #export_name]
-        #vis_marker extern "C" fn #inner_name(#(#p_idx: usize),*) -> i32 {
-            #get_unsplit_params
-            #set_args
-
-            let result = #name(#(#param_names),*);
-            typst_wasm_protocol::PluginResult::send_result(result)
+        #[unsafe(export_name = #export_name)]
+        #vis extern "C" fn #inner_name(#(#lens: usize),*) -> i32 {
+            #body
         }
-    )
-    .into()
+    })
 }
 
-struct MacroOptions {
-    pub export_rename: Option<Expr>,
-}
-
+/// Export a function as a Typst wasm plugin entry point.
+///
+/// Each parameter receives one argument passed from Typst, in declaration
+/// order, and must implement `FromArg` (for example `Vec<u8>`, `&[u8]`,
+/// `String`, or `Json<T>`). The return type must implement `IntoResponse`
+/// (for example `Vec<u8>`, `String`, `Json<T>`, or `Result<_, PluginError>`).
+///
+/// Parameters may use patterns, so extractor-style signatures work:
+///
+/// ```ignore
+/// #[wasm_export]
+/// pub fn detect(Json(input): Json<Input>) -> Result<Json<Output>, PluginError> { ... }
+/// ```
+///
+/// ## Export Rename
+///
+/// ```ignore
+/// #[wasm_export(export_rename = "other_name")]
+/// pub fn my_function() -> String { ... }
+/// ```
+///
+/// ## Length Checking
+///
+/// For performance reasons, argument length checking is disabled by default.
+/// You can enable it by setting `check_args = true` in the attribute options.
+///
+/// ```ignore
+/// #[wasm_export(check_args = true)]
+/// pub fn say_six_seven() -> String { ... }
+/// ```
+///
 #[proc_macro_attribute]
 pub fn wasm_export(args: TokenStream, item: TokenStream) -> TokenStream {
-    let args = syn::punctuated::Punctuated::<syn::MetaNameValue, syn::Token![,]>::parse_terminated
-        .parse(args)
-        .expect("invalid arguments");
-
-    let mut options = MacroOptions {
-        export_rename: None,
+    let options = match parse_options(args) {
+        Ok(options) => options,
+        Err(error) => return error.to_compile_error().into(),
     };
-    for arg in args {
-        let syn::MetaNameValue { path, value, .. } = arg;
-        match path.get_ident().expect("invalid argument") {
-            x if x == "export_rename" => {
-                options.export_rename = Some(value);
-            }
-            _ => panic!("invalid argument"),
-        }
-    }
-
-    let mut item = proc_macro2::TokenStream::from(item);
-    let decl = parse_item(item.clone()).expect("invalid declaration");
-    let func = match decl.as_function() {
-        Some(func) => func.clone(),
-        None => {
-            let error = venial::Error::new_at_tokens(
-                &item,
-                "#[wasm_export] can only be applied to a function",
-            );
-            item.extend(error.to_compile_error());
-            return item.into();
-        }
+    let func = match syn::parse::<ItemFn>(item) {
+        Ok(func) => func,
+        Err(error) => return error.to_compile_error().into(),
     };
-    let Function {
-        name,
-        params,
-        vis_marker,
-        ..
-    } = func.clone();
-
-    let mut error = None;
-    let p = params
-        .items()
-        .filter_map(|x| match x {
-            FnParam::Receiver(_p) => {
-                let x = x.to_token_stream();
-                error = Some(venial::Error::new_at_tokens(
-                    &x,
-                    format!("the {x} argument is not allowed by the protocol"),
-                ));
-                None
-            }
-            FnParam::Typed(p) => Some(p.clone()),
-        })
-        .collect::<Vec<_>>();
-
-    let mut result = quote!(#func);
-    if let Some(error) = error {
-        result.extend(error.to_compile_error());
-    } else {
-        result.extend(construct_export(
-            &name,
-            vis_marker,
-            p,
-            &options.export_rename,
-        ));
+    match expand(func, options) {
+        Ok(tokens) => tokens.into(),
+        Err(error) => error.to_compile_error().into(),
     }
-    result.into()
 }
