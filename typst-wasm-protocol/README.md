@@ -1,1 +1,1 @@
-# typst-wasm-protocol
+../README.md
